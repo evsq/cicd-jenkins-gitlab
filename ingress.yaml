@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: cicd
+  name: cicd
+spec:
+  rules:
+  - host: jenkins.cicd
+    http:
+      paths:
+      - backend:
+          serviceName: jenkins
+          servicePort: 8080
+  - host: gitlab.cicd
+    http:
+      paths:
+      - backend:
+          serviceName: gitlab
+          servicePort: 80
