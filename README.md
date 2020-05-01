@@ -1,11 +1,12 @@
-Install plugins: workflow-aggregator, gitlab-plugin, kubernetes
+# Install plugins: 
+workflow-aggregator, gitlab-plugin, kubernetes
 
-Dynamic agents
+# Dynamic agents
 You need to disable build master agents
 Go to Manage Jenkins -> Manage Nodes and Clouds -> Configure (Click the gear icon associated with the master row) -> set # of executors to 0 -> Save
 
 
-Configuring kubernetes plugin
+# Configuring kubernetes plugin
 
 Go to Manage Jenkins -> Manage Nodes and Clouds -> Configure Clouds -> Add a new cloud (Kubernetes) -> Kubernetes cloud details ->
 
@@ -37,7 +38,7 @@ Containers -> Container template
 Click "Save"
 
 
-Configuring Gitlab-Jenkins integration
+# Configuring Gitlab-Jenkins integration
 
 
 
