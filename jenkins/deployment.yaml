@@ -13,12 +13,16 @@ spec:
       labels:
         app: jenkins
     spec:
+      hostAliases:
+        - ip: "89.1.2.3"
+          hostnames:
+          - "gitlab.cicd"
       serviceAccountName: jenkins
       securityContext:
         fsGroup: 1000
       containers:
       - name: jenkins
-        image: jenkins/jenkins:lts
+        image: evsq/jenkins-kubernetes
         env:
         - name: JAVA_OPTS
           value: -Djenkins.install.runSetupWizard=false

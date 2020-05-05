@@ -15,6 +15,10 @@ spec:
       labels:
         app: gitlab
     spec:
+      hostAliases:
+      - ip: "89.1.2.3"
+        hostnames:
+        - "jenkins.cicd"
       containers:
       - name: gitlab
         image: gitlab/gitlab-ce

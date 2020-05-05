@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+- ingress.yaml
+
+commonLabels:
+  app: hello-app
+
+patchesJson6902:
+- target:
+    name: hello-app
+    kind: Ingress
+    group: extensions
+    version: v1beta1
+  path: host.json
+- target:
+    name: hello-app
+    kind: Deployment
+    group: apps
+    version: v1
+  path: image.json

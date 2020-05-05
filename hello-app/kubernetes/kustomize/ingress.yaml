@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  labels:
+    app: hello-app
+  name: hello-app
+spec:
+  rules:
+  - host: hello-app
+    http:
+      paths:
+      - backend:
+          serviceName: hello-app
+          servicePort: 80

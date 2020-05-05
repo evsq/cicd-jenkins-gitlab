@@ -1,0 +1,125 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = "https://registry.hub.docker.com"
+        KUBE_ENV = sh(script: '''#!/bin/bash
+            if [[ $gitlabBranch == develop ]] || [[ $gitlabBranch == master ]] || [[ $gitlabBranch == stage ]]; then
+                if [[ $gitlabBranch == develop ]]; then
+                    echo "develop";
+                elif [[ $gitlabBranch == stage ]]; then
+                    echo "stage";
+                else
+                    echo "production";
+                fi
+            elif [[ $REPO_BRANCH == develop ]] || [[ $REPO_BRANCH == master ]] || [[ $REPO_BRANCH == stage ]]; then
+                if [[ $REPO_BRANCH  == develop ]]; then
+                    echo "develop";
+                elif [[ $REPO_BRANCH  == stage ]]; then
+                    echo "stage";
+                else
+                    echo "production";
+                fi
+            else
+                echo "develop";
+            fi
+            ''', , returnStdout: true).trim()
+    }
+
+    stages {
+
+        stage("Checkout repo") {
+            steps {
+                git credentialsId: 'gitlab-user', url: 'http://gitlab.cicd/root/test.git'
+            }
+        }
+
+        stage("Build and push image to docker registry") {
+           environment {
+                SOURCE_HASH_COMMIT = sh(script: '''#!/bin/bash
+                git rev-parse --short HEAD''', , returnStdout: true
+                ).trim()
+                DOCKER_IMAGE = "${params.CONTAINER_PROJECT}/${params.CONTAINER_NAME}:${env.SOURCE_HASH_COMMIT}"
+            }
+
+            steps {
+                script {
+                    docker.withRegistry('', 'docker-registry') {
+                        def customImage = docker.build("${DOCKER_IMAGE}")
+                        customImage.push()
+                    }
+                    currentBuild.description = currentBuild.description + "\n" + "${DOCKER_IMAGE}"
+                }
+            }
+        }
+
+        stage("Prepare Deploy") {
+            environment {
+                KUBE_NAMESPACE_NAME = generateKubeNamespaceName()
+            }
+
+            steps {
+                script {
+                        try {
+                            sh 'kubectl create ns ${KUBE_NAMESPACE_NAME}'
+                        } catch (err) {
+                            echo "Namespace already exists"
+                        }
+                  
+                        try {
+                            generateDockerPullSecret()
+                        } catch (err) {
+                            echo "Secret already exists"
+                        }
+
+                    currentBuild.description = currentBuild.description + "\n" + "${KUBE_NAMESPACE_NAME}"
+                }
+                
+            }
+        }
+
+        stage("Deploy") {
+            environment {
+            KUBE_NAMESPACE_NAME = generateKubeNamespaceName()
+            SOURCE_HASH_COMMIT = sh(script: '''#!/bin/bash
+                git rev-parse --short HEAD''', , returnStdout: true
+            ).trim()
+            DOCKER_IMAGE = "${params.CONTAINER_PROJECT}/${params.CONTAINER_NAME}:${env.SOURCE_HASH_COMMIT}"
+            }
+
+            steps {
+                script {
+                sh '''#!/bin/bash
+                    FILES=kubernetes/kustomize/*template.json
+
+                    for f in $FILES;
+                    do
+                    fn=$(basename $f)
+                    echo "Replace env in $f"
+                    echo "New file: ${fn%.template.json}.json"
+                    envsubst < $f > kubernetes/kustomize/${fn%.template.json}.json;
+                    done
+
+                    kubectl kustomize kubernetes/kustomize
+                    kubectl apply --namespace ${KUBE_NAMESPACE_NAME} -k kubernetes/kustomize
+                    kubectl apply --namespace ${KUBE_NAMESPACE_NAME} -f kubernetes
+                '''
+                }
+            }
+        }
+    }
+}
+
+def generateKubeNamespaceName(){
+    sh(script: '''#!/bin/bash
+      echo ${KUBE_NAMESPACE}-${KUBE_ENV};
+    ''', , returnStdout: true).trim()
+}
+
+def generateDockerPullSecret(){
+    withCredentials([usernamePassword(credentialsId: "${params.DOCKER_REGISTRY}", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USER')]) {
+        sh(script: '''#!/bin/bash
+        kubectl --namespace ${KUBE_NAMESPACE_NAME} create secret docker-registry registry --docker-server=${REGISTRY} --docker-username=${DOCKER_USER} --docker-password=${DOCKER_PASSWORD}
+        ''')
+    }
+}

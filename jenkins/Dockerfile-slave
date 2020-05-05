@@ -1,0 +1,19 @@
+FROM jenkins/jnlp-slave
+
+USER root
+
+WORKDIR /tmp
+
+# docker cli
+RUN curl -L https://download.docker.com/linux/static/stable/x86_64/docker-18.09.0.tgz -o docker.tgz
+RUN tar xvzf docker.tgz
+RUN mv docker/docker /bin/docker
+RUN rm -rf /tmp/docker
+
+# kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+RUN chmod 755 kubectl && mv kubectl /bin/kubectl
+
+# envsubst
+RUN apt-get update
+RUN apt-get install gettext -y

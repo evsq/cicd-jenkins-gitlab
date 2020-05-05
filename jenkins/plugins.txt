@@ -1,0 +1,4 @@
+workflow-aggregator
+gitlab-plugin
+kubernetes
+docker-workflow
